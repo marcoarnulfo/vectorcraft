@@ -476,15 +476,17 @@ fn tab_goes_x_y_w_h() {
     let mut app = VectorcraftApp::new(vectorcraft_engine::Session::new(), Default::default());
     app.run("file.new", json!({"width": 300, "height": 200})).unwrap();
     app.run("shape.rectangle", json!({"x": 0, "y": 0, "width": 40, "height": 30})).unwrap();
-    check_xywh_order("Transform", &mut app, show);
-    check_xywh_order("Properties", &mut app, crate::panels::properties::transform_section);
+    check_xywh_order("Transform", &mut app, show, 0);
+    check_xywh_order("Properties", &mut app, crate::panels::properties::transform_section, 0);
     app.run("tool.select", json!({"tool": "artboard"})).unwrap();
-    check_xywh_order("Artboard", &mut app, show);
+    check_xywh_order("Artboard", &mut app, show, 0);
+    // The Properties panel starts with the artboard's name field.
+    check_xywh_order("Edit Artboards", &mut app, crate::panels::properties::show, 1);
 }
 
-fn check_xywh_order(name: &str, app: &mut VectorcraftApp, draw: fn(&mut VectorcraftApp, &mut Ui)) {
+fn check_xywh_order(name: &str, app: &mut VectorcraftApp, draw: fn(&mut VectorcraftApp, &mut Ui), skip: usize) {
     // The number fields are the wide stops; the reference point's and the scrub labels' are small.
-    let fields: Vec<egui::Rect> = tab_stops(app, draw).into_iter().filter(|r| r.width() > 50.0).take(4).collect();
+    let fields: Vec<egui::Rect> = tab_stops(app, draw).into_iter().filter(|r| r.width() > 50.0).skip(skip).take(4).collect();
     let [x, y, w, h] = fields[..] else { panic!("{name}: four fields expected, got {fields:?}") };
     assert!(x.min.x == y.min.x && w.min.x == h.min.x && x.max.x < w.min.x, "{name}: columns {fields:?}");
     assert!(x.min.y == w.min.y && y.min.y == h.min.y && x.max.y < y.min.y, "{name}: rows {fields:?}");
