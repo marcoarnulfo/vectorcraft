@@ -485,11 +485,17 @@ fn tab_goes_x_y_w_h() {
 }
 
 fn check_xywh_order(name: &str, app: &mut VectorcraftApp, draw: fn(&mut VectorcraftApp, &mut Ui), skip: usize) {
-    // The number fields are the wide stops; the reference point's and the scrub labels' are small.
-    let fields: Vec<egui::Rect> = tab_stops(app, draw).into_iter().filter(|r| r.width() > 50.0).skip(skip).take(4).collect();
-    let [x, y, w, h] = fields[..] else { panic!("{name}: four fields expected, got {fields:?}") };
-    assert!(x.min.x == y.min.x && w.min.x == h.min.x && x.max.x < w.min.x, "{name}: columns {fields:?}");
-    assert!(x.min.y == w.min.y && y.min.y == h.min.y && x.max.y < y.min.y, "{name}: rows {fields:?}");
+    // X is the first wide stop after `skip` of them (the reference point's cells are small); from
+    // there Tab takes the four fields one after the other, none of their labels between them.
+    let stops = tab_stops(app, draw);
+    let start = stops.iter().enumerate().filter(|(_, r)| r.width() > 50.0).nth(skip).map(|(i, _)| i);
+    let Some([x, y, w, h, next]) = start.and_then(|i| stops.get(i..i + 5)).and_then(|s| <[egui::Rect; 5]>::try_from(s).ok()) else {
+        panic!("{name}: four fields and a stop after them expected, got {stops:?}")
+    };
+    assert!(x.min.x == y.min.x && w.min.x == h.min.x && x.max.x < w.min.x, "{name}: columns {stops:?}");
+    assert!(x.min.y == w.min.y && y.min.y == h.min.y && x.max.y < y.min.y, "{name}: rows {stops:?}");
+    // After H, Tab leaves the grid (right of it or below), not back to H's label on its left.
+    assert!(next.min.x >= h.max.x || next.min.y >= h.max.y, "{name}: after H {next:?}, stops {stops:?}");
 }
 
 #[test]
